@@ -1,27 +1,35 @@
 /*
 ========================================================
-        ESP32 WiFi Controlled Robot Arm
+        ESP32 6-DOF ROBOTIC MANIPULATOR
 ========================================================
 
 Features:
-- Web-based robot arm control
-- Real-time servo movement
-- Record and playback functionality
-- ESP32 Access Point mode
-- WebSocket communication
+- 6 DOF Robot Arm Control
+- WiFi Web-Based Interface
+- Real-Time Servo Control
+- Record & Playback Motion
+- ESP32 Access Point Mode
+- WebSocket Communication
+
+DOF (Degrees of Freedom):
+1. Base Rotation
+2. Shoulder
+3. Elbow
+4. Wrist Pitch
+5. Wrist Roll
+6. Gripper
 
 Author : Hemanth Balusu
 Platform : ESP32
 ========================================================
 */
 
-// ================= DISABLE BLUETOOTH =================
-// Reduces memory usage since Bluetooth is not needed
-
 #define CONFIG_BT_ENABLED 0
 #define CONFIG_BLUEDROID_ENABLED 0
 
-// ================= REQUIRED LIBRARIES =================
+// =====================================================
+// REQUIRED LIBRARIES
+// =====================================================
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -30,69 +38,78 @@ Platform : ESP32
 #include <ESP32Servo.h>
 #include <vector>
 
-// ================= WIFI CONFIGURATION =================
-// Replace with your own WiFi credentials if needed
+// =====================================================
+// WIFI CONFIGURATION
+// =====================================================
 
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-// ================= SERVER CONFIGURATION =================
+// =====================================================
+// WEB SERVER
+// =====================================================
 
-// Create web server on port 80
 AsyncWebServer server(80);
-
-// Create WebSocket endpoint
 AsyncWebSocket ws("/ws");
 
-// ================= SERVO DATA STRUCTURE =================
-// Stores servo object and details
+// =====================================================
+// SERVO STRUCTURE
+// =====================================================
 
 struct ServoData {
-  Servo servo;      // Servo object
-  int pin;          // GPIO pin
-  String name;      // Servo name
-  int pos;          // Initial position
+
+  Servo servo;
+  int pin;
+  String name;
+  int pos;
 };
 
-// ================= SERVO DEFINITIONS =================
-// Add all robot arm servos here
+// =====================================================
+// 6 DOF SERVO DEFINITIONS
+// =====================================================
 
 std::vector<ServoData> servos = {
 
-  // Base rotation servo
-  {Servo(), 27, "Base", 90},
+  // Joint 1 : Base Rotation
+  {Servo(), 13, "Base", 90},
 
-  // Shoulder movement servo
-  {Servo(), 26, "Shoulder", 90},
+  // Joint 2 : Shoulder
+  {Servo(), 12, "Shoulder", 90},
 
-  // Elbow movement servo
-  {Servo(), 25, "Elbow", 90},
+  // Joint 3 : Elbow
+  {Servo(), 14, "Elbow", 90},
 
-  // Gripper servo
-  {Servo(), 33, "Gripper", 90}
+  // Joint 4 : Wrist Pitch
+  {Servo(), 27, "WristPitch", 90},
+
+  // Joint 5 : Wrist Roll
+  {Servo(), 26, "WristRoll", 90},
+
+  // Joint 6 : Gripper
+  {Servo(), 25, "Gripper", 90}
 };
 
-// ================= RECORDING STRUCTURE =================
-// Stores movement data for playback
+// =====================================================
+// RECORDING STRUCTURE
+// =====================================================
 
 struct Step {
-  int servoIndex;   // Which servo moved
-  int value;        // Servo angle
-  int delayMs;      // Delay between steps
+
+  int servoIndex;
+  int value;
+  int delayMs;
 };
 
-// Vector to store recorded steps
 std::vector<Step> steps;
 
-// Flags
 bool recordMode = false;
 bool playMode = false;
 
-// Timing variable
 unsigned long lastTime = 0;
 
-// ================= HTML WEBPAGE =================
-// Web interface served by ESP32
+// =====================================================
+// HTML WEBPAGE
+// =====================================================
 
 const char html[] PROGMEM = R"rawliteral(
 
@@ -100,140 +117,207 @@ const char html[] PROGMEM = R"rawliteral(
 <html>
 
 <head>
-  <title>ESP32 Robot Arm</title>
+
+<title>ESP32 6DOF Robot Arm</title>
+
+<style>
+
+body{
+  font-family:Arial;
+  text-align:center;
+  background:#f0f0f0;
+}
+
+.slider{
+  width:300px;
+}
+
+button{
+  padding:10px;
+  margin:5px;
+  font-size:16px;
+}
+
+.container{
+  background:white;
+  width:450px;
+  margin:auto;
+  padding:20px;
+  border-radius:10px;
+}
+
+</style>
+
 </head>
 
-<body style="text-align:center; font-family:Arial;">
+<body>
 
-<h2>ESP32 Robot Arm Controller</h2>
+<div class="container">
+
+<h2>ESP32 6DOF Robot Manipulator</h2>
 
 <script>
 
-// Create WebSocket connection
+// WebSocket Connection
 var ws = new WebSocket("ws://" + location.host + "/ws");
 
-// Function to send data to ESP32
-function send(name, val) {
+// Send data to ESP32
+function send(name,val){
+
   ws.send(name + "," + val);
 }
 
 </script>
 
-<!-- Base Servo -->
-Base
-<input type="range"
-       min="0"
-       max="180"
-       value="90"
-       oninput="send('Base', this.value)">
+<!-- ================= JOINT 1 ================= -->
+
+<h3>Base Rotation</h3>
+
+<input class="slider"
+type="range"
+min="0"
+max="180"
+value="90"
+oninput="send('Base',this.value)">
+
+<!-- ================= JOINT 2 ================= -->
+
+<h3>Shoulder</h3>
+
+<input class="slider"
+type="range"
+min="0"
+max="180"
+value="90"
+oninput="send('Shoulder',this.value)">
+
+<!-- ================= JOINT 3 ================= -->
+
+<h3>Elbow</h3>
+
+<input class="slider"
+type="range"
+min="0"
+max="180"
+value="90"
+oninput="send('Elbow',this.value)">
+
+<!-- ================= JOINT 4 ================= -->
+
+<h3>Wrist Pitch</h3>
+
+<input class="slider"
+type="range"
+min="0"
+max="180"
+value="90"
+oninput="send('WristPitch',this.value)">
+
+<!-- ================= JOINT 5 ================= -->
+
+<h3>Wrist Roll</h3>
+
+<input class="slider"
+type="range"
+min="0"
+max="180"
+value="90"
+oninput="send('WristRoll',this.value)">
+
+<!-- ================= JOINT 6 ================= -->
+
+<h3>Gripper</h3>
+
+<input class="slider"
+type="range"
+min="0"
+max="180"
+value="90"
+oninput="send('Gripper',this.value)">
+
 <br><br>
 
-<!-- Shoulder Servo -->
-Shoulder
-<input type="range"
-       min="0"
-       max="180"
-       value="90"
-       oninput="send('Shoulder', this.value)">
-<br><br>
+<!-- ================= RECORD BUTTONS ================= -->
 
-<!-- Elbow Servo -->
-Elbow
-<input type="range"
-       min="0"
-       max="180"
-       value="90"
-       oninput="send('Elbow', this.value)">
-<br><br>
-
-<!-- Gripper Servo -->
-Gripper
-<input type="range"
-       min="0"
-       max="180"
-       value="90"
-       oninput="send('Gripper', this.value)">
-<br><br>
-
-<!-- Recording Controls -->
-<button onclick="send('Record', 1)">
-  Record ON
+<button onclick="send('Record',1)">
+Record ON
 </button>
 
-<button onclick="send('Record', 0)">
-  Record OFF
+<button onclick="send('Record',0)">
+Record OFF
 </button>
 
 <br><br>
 
-<!-- Playback Button -->
-<button onclick="send('Play', 1)">
-  Play Recorded Motion
+<!-- ================= PLAYBACK BUTTON ================= -->
+
+<button onclick="send('Play',1)">
+Play Motion
 </button>
+
+</div>
 
 </body>
 </html>
 
 )rawliteral";
 
-// ========================================================
-// FUNCTION: moveServo()
-// Moves servo and records movement if recording enabled
-// ========================================================
+// =====================================================
+// MOVE SERVO FUNCTION
+// =====================================================
 
 void moveServo(int i, int value) {
 
-  // If recording mode is active
+  // Limit servo angle
+  value = constrain(value, 0, 180);
+
+  // Save steps during recording
   if (recordMode) {
 
     unsigned long now = millis();
 
-    // Save step information
     steps.push_back({
-      i,                          // Servo index
-      value,                      // Servo angle
-      (int)(now - lastTime)       // Delay from previous step
+
+      i,
+      value,
+      (int)(now - lastTime)
     });
 
-    // Update timing
     lastTime = now;
   }
 
   // Move servo
   servos[i].servo.write(value);
+
+  // Store current position
+  servos[i].pos = value;
 }
 
-// ========================================================
-// FUNCTION: playSteps()
-// Plays all recorded movements
-// ========================================================
+// =====================================================
+// PLAY RECORDED STEPS
+// =====================================================
 
 void playSteps() {
 
-  // Loop through recorded steps
   for (auto &s : steps) {
 
-    // Stop playback if disabled
     if (!playMode)
       return;
 
-    // Wait required delay
     delay(s.delayMs);
 
-    // Move corresponding servo
     servos[s.servoIndex].servo.write(s.value);
   }
 
-  // Disable playback after completion
   playMode = false;
 }
 
-// ========================================================
-// FUNCTION: handleWebSocket()
-// Handles incoming WebSocket messages
-// ========================================================
+// =====================================================
+// WEBSOCKET EVENT HANDLER
+// =====================================================
 
 void handleWebSocket(
+
   AsyncWebSocket *server,
   AsyncWebSocketClient *client,
   AwsEventType type,
@@ -242,105 +326,118 @@ void handleWebSocket(
   size_t len
 ) {
 
-  // If message data received
   if (type == WS_EVT_DATA) {
 
     String msg = "";
 
-    // Convert byte data to string
+    // Convert incoming data to string
     for (size_t i = 0; i < len; i++) {
+
       msg += (char)data[i];
     }
 
-    // Split message
+    // Split command
     int comma = msg.indexOf(',');
 
     String key = msg.substring(0, comma);
+
     int value = msg.substring(comma + 1).toInt();
 
-    // ================= RECORD MODE =================
+    // ================= RECORD =================
 
     if (key == "Record") {
 
       recordMode = value;
 
-      // Clear old steps when recording starts
       if (recordMode) {
 
         steps.clear();
 
-        // Reset timer
         lastTime = millis();
+
+        Serial.println("Recording Started");
+      }
+      else {
+
+        Serial.println("Recording Stopped");
       }
     }
 
-    // ================= PLAYBACK MODE =================
+    // ================= PLAYBACK =================
 
     else if (key == "Play") {
 
       playMode = true;
+
+      Serial.println("Playback Started");
     }
 
     // ================= SERVO CONTROL =================
 
     else {
 
-      // Find matching servo
       for (int i = 0; i < servos.size(); i++) {
 
         if (key == servos[i].name) {
 
           moveServo(i, value);
+
+          Serial.print(servos[i].name);
+          Serial.print(" : ");
+          Serial.println(value);
         }
       }
     }
   }
 }
 
-// ========================================================
+// =====================================================
 // SETUP FUNCTION
-// ========================================================
+// =====================================================
 
 void setup() {
 
-  // Start Serial Monitor
   Serial.begin(115200);
 
-  Serial.println("\nESP32 Robot Arm Starting...");
+  Serial.println("\nESP32 6DOF Robot Arm Starting...");
 
   // ================= ATTACH SERVOS =================
 
   for (auto &s : servos) {
 
-    // Attach servo to pin
-    s.servo.attach(s.pin);
+    s.servo.setPeriodHertz(50);
 
-    // Move to initial position
+    s.servo.attach(s.pin, 500, 2400);
+
     s.servo.write(s.pos);
+
+    delay(300);
   }
 
   // ================= START WIFI ACCESS POINT =================
 
   WiFi.softAP(ssid, password);
 
-  Serial.println("WiFi Access Point Started");
+  Serial.println("\nWiFi Access Point Started");
 
-  // Print IP Address
-  Serial.print("IP Address: ");
+  Serial.print("IP Address : ");
+
   Serial.println(WiFi.softAPIP());
 
-  // ================= WEBSOCKET SETUP =================
+  // ================= WEBSOCKET =================
 
   ws.onEvent(handleWebSocket);
 
   server.addHandler(&ws);
 
-  // ================= WEBPAGE ROUTE =================
+  // ================= WEB PAGE =================
 
   server.on("/", HTTP_GET,
-    [](AsyncWebServerRequest *req) {
 
-      req->send_P(
+    [](AsyncWebServerRequest *request) {
+
+      request->send_P(
+
         200,
         "text/html",
         html
@@ -355,13 +452,13 @@ void setup() {
   Serial.println("Web Server Started");
 }
 
-// ========================================================
+// =====================================================
 // LOOP FUNCTION
-// ========================================================
+// =====================================================
 
 void loop() {
 
-  // Remove disconnected WebSocket clients
+  // Remove disconnected clients
   ws.cleanupClients();
 
   // Play recorded motion
